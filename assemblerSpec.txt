@@ -1,0 +1,68 @@
+ALU Operations
+Format: 4-bit Op Code, 4-bit destination register, 4-bit source register, 4-bit source register
+Op Codes:
+0000 and: And
+0001 or: Or
+0010 xor: Xor
+0011 add: Add
+0100 sub: Subtract
+0101 eq: Equal
+0110 lt: Less Than
+0111 gteq: Greater than or equal to
+
+Example: 
+Assembly: sub r3 r2 r1
+Machine Code: 0b 0100 0011 0010 0001 -> 0x4321
+Effect: Register 3 = Register 2 - Register 1
+
+RAM Store Operation (ramstore)
+Format: 1001, 8-bit RAM address (in hex), 4-bit register
+Example:
+Assembly: ramstore 8a r15
+Machine Code: 0b 1001 1000 1010 1111 -> 0x98af
+Effect: The contents of register 15 are stored in RAM location 0x8a
+
+RAM Load Operation (ramload)
+Format: 1000, 4-bit register, 8-bit RAM address (in hexadecimal)
+Example:
+Assembly: ramload r12 29
+Machine Code: 0b 1000 1100 0010 1001 -> 0x8c29
+Effect: The contents of RAM location 0x29 are loaded into register 12
+
+Register Set Operation (regset)
+Format: 1110, 4-bit register destination, 8-bit constant (in decimal)
+Example:
+Assembly: regset r5 27
+Machine Code: 0b 1110 0101 0001 1011 -> 0xe51b
+Effect: The number 27 (0x1b) is stored in register 5
+
+Unconditional Jump (jump)
+Format: 1111, 8-bit location (in hexadecimal), 0000
+Example:
+Assembly: jump 1b
+Machine Code: 0b 1111 0001 1011 0000 -> 0xf1b0
+Effect: Instruction number 0x1b (28) will be executed next
+
+Conditional Jump If Zero (jz)
+Format: 1101, 8-bit location (in hexadecimal), 4-bit register
+Example:
+Assembly: jz 23 r8
+Machine Code: 0b 1101 0010 0011 1000 -> 0xd238
+Effect: If register 8 contains a zero, instruction number 0x23 (35) will be executed next. If register 8 contains anything else, then the next consecutive instruction will be executed next.
+
+Conditional Jump If Not Equal Zero (jnz)
+Format: 1010, 8-bit location (in hexadecimal), 4-bit register
+Example:
+Assembly: jnz 24 r8
+Machine Code: 0b 1010 0010 0011 1000 -> 0xd238
+Effect: If register 8 does not contain zero, instruction number 0x23 (35) will be executed next. If register 8 does contain zero, then the next consecutive instruction will be executed next.
+
+Conditional Jump If Less than Zero (jlz)
+Format: 1011, 8-bit location (in hexadecimal), 4-bit register
+Example:
+Assembly: jlz 24 r8
+Machine Code: 0b 1010 0010 0011 1000 -> 0xd238
+Effect: If register 8 contains a value less than zero, instruction number 0x23 (35) will be executed next. If register 8 contains a value greater than or equal to zero, then the next consecutive instruction will be executed next.
+
+Unused Op Codes:
+1110

@@ -54,14 +54,14 @@ Conditional Jump If Not Equal Zero (jnz)
 Format: 1010, 8-bit location (in hexadecimal), 4-bit register
 Example:
 Assembly: jnz 24 r8
-Machine Code: 0b 1010 0010 0011 1000 -> 0xd238
+Machine Code: 0b 1010 0010 0011 1000 -> 0xa238
 Effect: If register 8 does not contain zero, instruction number 0x23 (35) will be executed next. If register 8 does contain zero, then the next consecutive instruction will be executed next.
 
 Conditional Jump If Less than Zero (jlz)
 Format: 1011, 8-bit location (in hexadecimal), 4-bit register
 Example:
 Assembly: jlz 24 r8
-Machine Code: 0b 1010 0010 0011 1000 -> 0xd238
+Machine Code: 0b 1011 0010 0011 1000 -> 0xb238
 Effect: If register 8 contains a value less than zero, instruction number 0x23 (35) will be executed next. If register 8 contains a value greater than or equal to zero, then the next consecutive instruction will be executed next.
 
 Unused Op Codes:

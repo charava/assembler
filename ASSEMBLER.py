@@ -1,6 +1,14 @@
 import sys
 
 ERROR = 'ffff'
+MIN_SIGNED = -128
+MAX_SIGNED = 127
+MIN_UNSIGNED = 0
+MAX_UNSIGNED = 255
+MIN_REGISTER = 0
+MAX_REGISTER = 15
+
+
 TESTCASES = [
     ['add r0 r15 r12', '00fc'],
     ['and r1 r14 r13', '11ed'],
@@ -9,7 +17,7 @@ TESTCASES = [
     ['sub r3 r3 r3', '4333'],
     ['eq r6 r10 r9', '56a9'],
     ['lt r7 r7 r10', '677a'],
-    ['lteq r11 r1 r11', '7b1b'],
+    ['gteq r11 r1 r11', '7b1b'],
     ['ramstore 0 r3', '9003'],
     ['ramstore c2 r15', '9c2f'],
     ['ramstore ff r12', '9ffc'],
@@ -70,7 +78,6 @@ TESTCASES = [
     ['jz -35 r3', ERROR], # negative address
     ['jz 6r r8', ERROR], # address not a number
 ]
-
 # Format: 4-bit Op Code, 4-bit destination register, 4-bit source register, 4-bit source register
 ALU_OPS = { 
     'and': '0',
@@ -80,10 +87,8 @@ ALU_OPS = {
     'sub': '4',
     'eq': '5',
     'lt': '6',
-    'lteq': '7',
-    'gteq': '8'
+    'gteq': '7'
 }
-
 
 COND_JUMP_OPS = {
     'jz': 'd',
@@ -105,6 +110,7 @@ def display_error(msg, line_num):
     if print_errors:
         sys.stderr.write('Error on line {}: {}\n'.format(line_num,  msg))
 
+
 def translate_address(value, line_num):
     # try to translate the value as hexadecimal. If it fails, set it to an invalid value
     try:
@@ -120,12 +126,136 @@ def translate_address(value, line_num):
         return '{:0>2}'.format(value)
 
 
+def translate_register(register, line_num):
+    # try to read the register as an integer. If it fails, set it to an invalid value
+    try:
+        num = int(register[1:])
+    except ValueError:
+        num = MIN_REGISTER - 1 
+
+    if register[0] != 'r' or num < MIN_REGISTER or num > MAX_REGISTER:
+        display_error('"{}" is not a valid register'.format(register), line_num)
+        return ERROR
+    else:
+        # the x tells it to use hexadecimal
+        return '{:x}'.format(num)
+
+
+def translate_constant(constant, line_num):
+    try:
+        num = int(constant)
+    except ValueError:
+        num = MIN_SIGNED - 1
+
+    if num < MIN_SIGNED or num > MAX_SIGNED:
+        display_error('"{}" is not a valid 8-bit constant'.format(constant), line_num)
+        return ERROR
+    else:
+        # 0>2 says to put a zero on the left if needed to make it two characters wide
+        # the x tells it to use hexadecimal
+        # The '& 0xff' pulls off the high bits, to make this 8 bits (necessary for negative numbers)
+        return '{:0>2x}'.format(num & 0xff)
+
+
+def translate_ALU(op, args, line_num):
+    print(args)
+    operation = ALU_OPS[op]
+    destination_register = translate_register(args[0], line_num)
+    source_register_one = translate_register(args[1], line_num)
+    source_register_two = translate_register(args[2], line_num)
+
+    if operation == ERROR or destination_register == ERROR or source_register_one == ERROR or source_register_two == ERROR:
+        return ERROR
+    else:
+        return operation + destination_register + source_register_one + source_register_two
+
+
+
+def translate_ramstore(args, line_num):
+    address = translate_address(args[0], line_num)
+    register = translate_register(args[1], line_num)
+    if address == ERROR or register == ERROR:
+        return ERROR
+    else:
+        return OTHER_OPS['ramstore'] + address + register
+
+        
+def translate_ramload(args, line_num): # this is just like the inverse of translate_ramstore
+
+    register = translate_register(args[0], line_num)
+    address = translate_address(args[1], line_num)
+    if address == ERROR or register == ERROR:
+        return ERROR
+    else:
+        return OTHER_OPS['ramload'] + register + address 
+    
+
+
+def translate_regset(args, line_num):
+    register = translate_register(args[0], line_num)
+    constant = translate_constant(args[1], line_num)
+    if constant == ERROR or register == ERROR:
+        return ERROR
+    else:
+        return OTHER_OPS['ramload'] + register + constant 
+   
+
+
+def translate_jump(args, line_num): # unconditional jump
+    if len(args) != 1:
+        display_error('jump takes one argument', line_num)
+        return ERROR
+    else:
+        address = translate_address(args[0], line_num)
+        if address == ERROR:
+            return ERROR
+        else:
+            return OTHER_OPS['jump'] + address + '0'
+
+
+def translate_conditional_jump(op, args, line_num):
+    if len(args) != 2:
+        display_error('cond jump takes two arguments', line_num)
+        return ERROR
+    else:
+        operation = COND_JUMP_OPS[op]
+        address = translate_address(args[0], line_num)
+        register = translate_register(args[1], line_num )
+        if address == ERROR or operation == ERROR:
+            return ERROR
+        else:
+            return operation + address + register
+    
 
 
 def translate_line(command, line_num):
-    # FILL IN HERE
-    display_error("Not implemented", line_num)
-    return ERROR
+    output = ''
+    tokens = command.split(' ')
+    op = tokens[0]
+    args = tokens[1:]
+
+    if op in ALU_OPS:
+        output = translate_ALU(op, args, line_num)
+    elif op == 'jump':
+        output = translate_jump(args, line_num)
+    elif len(args) != 2:
+        # all other operations take two arguments
+        display_error('{} takes two arguments'.format(op), line_num)
+        output = ERROR
+    elif op == 'ramstore':
+        output = translate_ramstore(args, line_num)
+    elif op == 'ramload':
+        output = translate_ramload(args, line_num)
+    elif op == 'regset':
+        output = translate_regset(args, line_num)
+    elif op == 'jz' or  op == 'jnz' or  op == 'jlz':
+        output = translate_conditional_jump(op, args, line_num)
+    else:
+        display_error('Unsupported operation ' + op, line_num)
+        output = ERROR
+
+    return output
+
 
 def translate_program(assembly):
     machine_code = []
@@ -138,11 +268,12 @@ def translate_program(assembly):
             machine_code.append(current_line)
             current_line = ''
 
-        if line != '': 
-            current_line += translate_line(line, line_num + 1) + ' ' 
+        if line != '':
+            current_line += translate_line(line, line_num + 1) + ' '
     machine_code.append(current_line)
 
     return machine_code
+
 
 def run_tests():
     # Some test cases purposely cause errors. This will prevent errors from printing
@@ -175,6 +306,7 @@ if __name__ == '__main__':
 
     if sys.argv[1] == 'test':
         run_tests()
+
     else:
         assembly = open(sys.argv[1]).read().split('\n')
         machine_code = translate_program(assembly)
@@ -182,4 +314,6 @@ if __name__ == '__main__':
 
 
 
-
+## WHERE IL EFT OFF
+ # fix the test stuff...
+ # # i think its working but just like make sure it actually returns the correct stuff for the run tests

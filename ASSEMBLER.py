@@ -10,14 +10,14 @@ MAX_REGISTER = 15
 
 
 TESTCASES = [
-    ['add r0 r15 r12', '00fc'],
-    ['and r1 r14 r13', '11ed'],
-    ['or r2 r11 r8', '22b8'],
-    ['xor r3 r4 r5', '3345'],
+    ['add r0 r15 r12', '30fc'],
+    ['and r1 r14 r13', '01ed'],
+    ['or r2 r11 r8', '12b8'],
+    ['xor r3 r4 r5', '2345'],
     ['sub r3 r3 r3', '4333'],
     ['eq r6 r10 r9', '56a9'],
     ['lt r7 r7 r10', '677a'],
-    ['gteq r11 r1 r11', '7b1b'],
+    ['gteq r3 r7 r9', '7379'],
     ['ramstore 0 r3', '9003'],
     ['ramstore c2 r15', '9c2f'],
     ['ramstore ff r12', '9ffc'],
@@ -36,6 +36,7 @@ TESTCASES = [
     ['jz ef r5', 'def5'],
     ['jz 00 r12', 'd00c'],
     ['jz a r5', 'd0a5'],
+    ['lteq r11 r1 r11', ERROR ], # not an operation in ALU yet
     ['foo r5 r6 r8', ERROR], # not a real operation
     ['add r0 r1 r2 r3', ERROR], # too many arguments
     ['add r2 r5', ERROR], # too few arguments
@@ -158,7 +159,10 @@ def translate_constant(constant, line_num):
 
 
 def translate_ALU(op, args, line_num):
-    print(args)
+
+    if len(args) != 3:
+        return ERROR
+    
     operation = ALU_OPS[op]
     destination_register = translate_register(args[0], line_num)
     source_register_one = translate_register(args[1], line_num)
@@ -181,7 +185,6 @@ def translate_ramstore(args, line_num):
 
         
 def translate_ramload(args, line_num): # this is just like the inverse of translate_ramstore
-
     register = translate_register(args[0], line_num)
     address = translate_address(args[1], line_num)
     if address == ERROR or register == ERROR:
@@ -197,7 +200,7 @@ def translate_regset(args, line_num):
     if constant == ERROR or register == ERROR:
         return ERROR
     else:
-        return OTHER_OPS['ramload'] + register + constant 
+        return OTHER_OPS['regset'] + register + constant 
    
 
 
@@ -220,8 +223,8 @@ def translate_conditional_jump(op, args, line_num):
     else:
         operation = COND_JUMP_OPS[op]
         address = translate_address(args[0], line_num)
-        register = translate_register(args[1], line_num )
-        if address == ERROR or operation == ERROR:
+        register = translate_register(args[1], line_num)
+        if address == ERROR or register == ERROR or operation == ERROR:
             return ERROR
         else:
             return operation + address + register
@@ -311,9 +314,3 @@ if __name__ == '__main__':
         assembly = open(sys.argv[1]).read().split('\n')
         machine_code = translate_program(assembly)
         print('\n'.join(machine_code))
-
-
-
-## WHERE IL EFT OFF
- # fix the test stuff...
- # # i think its working but just like make sure it actually returns the correct stuff for the run tests
